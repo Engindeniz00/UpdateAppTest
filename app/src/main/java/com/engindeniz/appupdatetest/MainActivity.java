@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
 
         AppUpdater appUpdater = new AppUpdater(this)
                 .setUpdateFrom(UpdateFrom.JSON)
-                .setUpdateJSON("https://raw.githubusercontent.com/Engindeniz00/UpdateAppTest/v1.0.2/app/update-changelog.json")
+                .setUpdateJSON("https://raw.githubusercontent.com/Engindeniz00/UpdateAppTest/v1.0.4/app/update-changelog.json")
                 .setDisplay(Display.DIALOG);
 
         appUpdater.start();
