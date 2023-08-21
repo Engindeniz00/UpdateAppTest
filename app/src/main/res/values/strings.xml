@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AppUpdateTest</string>
+    <string name="no_Internet">No internet connection</string>
+
 </resources>
