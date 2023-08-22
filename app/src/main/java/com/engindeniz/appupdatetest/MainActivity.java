@@ -229,26 +229,32 @@ public class MainActivity extends AppCompatActivity {
                 public void onReceive(Context ctxt, Intent intent) {
                     //BroadcastReceiver on Complete
                     if (apk_file_path.exists()) {
+                            try
+                            {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                    Uri apkUri = FileProvider.getUriForFile(context, context.getApplicationContext().getPackageName() + ".fileprovider", apk_file_path);
+                                    Log.d(TAG, "onReceive: apk uri : "+apkUri);
+                                    intent = new Intent(Intent.ACTION_VIEW);
+                                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                    intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                                    Log.d(TAG, "onReceive: NEW VER");
+                                }
+                                else {
+                                    Uri apkUri = Uri.fromFile(apk_file_path);
+                                    intent = new Intent(Intent.ACTION_VIEW);
+                                    intent.setDataAndType(apkUri, manager.getMimeTypeForDownloadedFile(downloadId));
+                                    intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    Log.d(TAG, "onReceive: OLD VER");
+                                }
 
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                Uri apkUri = FileProvider.getUriForFile(context, context.getApplicationContext().getPackageName() + ".fileprovider", apk_file_path);
-                                Log.d(TAG, "onReceive: apk uri : "+apkUri);
-                                intent = new Intent(Intent.ACTION_VIEW);
-                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                                intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-                                Log.d(TAG, "onReceive: NEW VER");
                             }
-                            else {
-                                Uri apkUri = Uri.fromFile(apk_file_path);
-                                intent = new Intent(Intent.ACTION_VIEW);
-                                intent.setDataAndType(apkUri, manager.getMimeTypeForDownloadedFile(downloadId));
-                                intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                Log.d(TAG, "onReceive: OLD VER");
+                            catch(Exception e)
+                            {
+                                Toast.makeText(context, e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
                             }
                         Log.d(TAG, "onReceive: ACTIVIY STARTED");
                         context.startActivity(intent);
