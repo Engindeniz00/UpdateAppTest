@@ -3,6 +3,8 @@ package com.engindeniz.appupdatetest;
 import static android.content.ContentValues.TAG;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import android.Manifest;
@@ -22,6 +24,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -56,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
 
         downloadAppProgress = binding.downloadAppProgress;
 
+        extraStoragePermission();
         isStoragePermissionGranted();
 
         if(isNetworkAvailable(MainActivity.this))
@@ -115,6 +119,27 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(context, R.string.no_Internet, Toast.LENGTH_SHORT).show();
         return false;
     }
+
+    private void extraStoragePermission()
+    {
+        //installtion permission
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if(!getPackageManager().canRequestPackageInstalls()){
+                startActivityForResult(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                        .setData(Uri.parse(String.format("package:%s", getPackageName()))), 1);
+            }
+        }
+//Storage Permission
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        }
+    }
     private boolean isStoragePermissionGranted() {
         if (MainActivity.this.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 == PackageManager.PERMISSION_GRANTED && MainActivity.this.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -143,16 +168,21 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onSuccess: new url to download:"+newUrlPath);
 
             Log.d(TAG, "downloadUpdate: file path dowload"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS));
-            final File apk_file_path = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),APK_STRING);
+            final File apk_file_path = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),APK_STRING);
             Log.d(TAG, "downloadUpdate: apk file path: "+apk_file_path);
-            if (apk_file_path.exists()) apk_file_path.delete();
-            Log.v(TAG,"Downloading request on url :"+newUrlPath);
+
+            if (apk_file_path.exists())
+            {
+                Log.d(TAG, "downloadUpdate: is deleted "+apk_file_path.delete());
+            }
+
+            Log.d(TAG,"Downloading request on url :"+newUrlPath);
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(newUrlPath.toString()));
             request.setDescription(versionString);
             request.setTitle(getResources().getString(R.string.app_name));
 
             final Uri uri = Uri.parse("file://" + apk_file_path);
-            Log.v(TAG,"Downloading uri:"+uri);
+            Log.d(TAG,"Downloading uri:"+uri);
             request.setDestinationUri(uri);
 
             // get download service and enqueue file
@@ -199,44 +229,38 @@ public class MainActivity extends AppCompatActivity {
                 public void onReceive(Context ctxt, Intent intent) {
                     //BroadcastReceiver on Complete
                     if (apk_file_path.exists()) {
-                        {
-                            Log.d(TAG, "onReceive: file : "+getApplicationContext().getPackageName() + ".fileprovider");
-                            Uri apkUri = FileProvider.getUriForFile(context, getApplicationContext().getPackageName() + ".fileprovider", apk_file_path);
-                            intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-                            intent.setData(apkUri);
-                            intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
-                            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        }
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                Uri apkUri = FileProvider.getUriForFile(context, context.getApplicationContext().getPackageName() + ".fileprovider", apk_file_path);
+                                Log.d(TAG, "onReceive: apk uri : "+apkUri);
+                                intent = new Intent(Intent.ACTION_VIEW);
+                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                                Log.d(TAG, "onReceive: NEW VER");
+                            }
+                            else {
+                                Uri apkUri = Uri.fromFile(apk_file_path);
+                                intent = new Intent(Intent.ACTION_VIEW);
+                                intent.setDataAndType(apkUri, manager.getMimeTypeForDownloadedFile(downloadId));
+                                intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                Log.d(TAG, "onReceive: OLD VER");
+                            }
+                        Log.d(TAG, "onReceive: ACTIVIY STARTED");
                         context.startActivity(intent);
                     }else{
                         Toast.makeText(context, "Something went wrong", Toast.LENGTH_SHORT).show();
                         downloadAppProgress.setVisibility(View.GONE);
                     }
+                    Log.d(TAG, "onReceive: ACTIVITY UNREGISTER");
                     context.unregisterReceiver(this);
-//                    try {
-//                        if (apk_file_path.exists()) {
-//                            {
-//                                Log.d(TAG, "onReceive: file : "+getApplicationContext().getPackageName() + ".fileprovider");
-//                                Uri apkUri = FileProvider.getUriForFile(context, getApplicationContext().getPackageName() + ".fileprovider", apk_file_path);
-//                                intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-//                                intent.setData(apkUri);
-//                                intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
-//                                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-//                            }
-//                            context.startActivity(intent);
-//                        }else{
-//                            Toast.makeText(context, "Something went wrong", Toast.LENGTH_SHORT).show();
-//                            downloadAppProgress.setVisibility(View.GONE);
-//                        }
-//                        context.unregisterReceiver(this);
-//
-//                    }
-//                    catch(IllegalArgumentException e)
-//                    {
-//                        Log.d(TAG, "onReceive: error !!"+e.getLocalizedMessage());
-//                    }
                 }
             };
+            Log.d(TAG, "downloadUpdate: NEW INTENT DOWNLOAD COMPLETE");
             context.registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         }
         catch (Exception e)
