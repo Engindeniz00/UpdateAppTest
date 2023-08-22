@@ -1,9 +1,8 @@
 {
-  "latestVersion": "1.0.5",
-  "latestVersionCode": "10",
+  "latestVersion": "1.0.6",
+  "latestVersionCode": "1",
   "url": "https://github.com/Engindeniz00/UpdateAppTest/releases",
   "releaseNotes": [
-    "- Second evolution",
-    "- Bug fixes"
+    "Version updater add"
   ]
 }
